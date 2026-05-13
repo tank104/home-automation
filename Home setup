@@ -1,0 +1,13 @@
+##Downstairs lights
+Downstairs low wall lights have shelly controller behind them.  
+They will automatically turn off after 2 hours.  
+Unifi garage/front door will trigger lights on between 6pm and 7am - this is through a webhook/alarm.
+NOTE: Unifi always send a message even if GET request and POST requests are wrapped in their own JSON, so we had to create a customn script on Shelly that is set to always run, that allows any POST to it:
+
+HTTPServer.registerEndpoint("trigger", function(request, response) {
+  Shelly.call("Switch.Set", {id: 0, on: true, toggle_after: 2});
+  response.code = 200;
+  response.body = '{"ok":true}';
+  response.send();
+});
+
