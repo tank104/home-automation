@@ -12,3 +12,40 @@ HTTPServer.registerEndpoint("trigger", function(request, response) {
 });
 
 [[/Unifi_Trigger.png]]
+
+##Ensuite Fan + Switchlight
+There are two shellys here - first shelly controls the fan - originally we couldn't control fan from switch and run Shelly as it would not work because the fan would voltage leak and so never set shelly on.  But having two also meant we can set a fan override.
+Shelly 1 plugs into switch and drives Fan.  In "Actions" its "Input on" would trigger the other shelly ttp://<shelly2-ip>/rpc/Switch.Set?id=0&on=true, and the opposite for "Input off".
+Shelly 1 is setup as destached switch and runs the below script on startup (this turns off 5 mins after getting switch off, except if switch on/off within 20 seconds):
+
+let OVERRUN_MS = 5 * 60 * 1000;
+let MIN_RUN_MS = 20 * 1000;
+let pendingOff = null;
+let overrunEligible = false;
+let eligibilityTimer = null;
+
+Shelly.addStatusHandler(function (st) {
+  if (st.component !== "input:0" || !st.delta || !("state" in st.delta)) return;
+  if (st.delta.state) {
+    if (pendingOff) { Timer.clear(pendingOff); pendingOff = null; }
+    if (eligibilityTimer) Timer.clear(eligibilityTimer);
+    overrunEligible = false;
+    eligibilityTimer = Timer.set(MIN_RUN_MS, false, function () {
+      overrunEligible = true;
+      eligibilityTimer = null;
+    });
+    Shelly.call("Switch.Set", { id: 0, on: true });
+  } else {
+    if (eligibilityTimer) { Timer.clear(eligibilityTimer); eligibilityTimer = null; }
+    if (overrunEligible) {
+      if (pendingOff) Timer.clear(pendingOff);
+      pendingOff = Timer.set(OVERRUN_MS, false, function () {
+        Shelly.call("Switch.Set", { id: 0, on: false });
+        pendingOff = null;
+      });
+    } else {
+      Shelly.call("Switch.Set", { id: 0, on: false });
+    }
+    overrunEligible = false;
+  }
+});
