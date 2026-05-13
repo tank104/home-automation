@@ -11,3 +11,4 @@ HTTPServer.registerEndpoint("trigger", function(request, response) {
   response.send();
 });
 
+[[/Unifi_Trigger.png]]
